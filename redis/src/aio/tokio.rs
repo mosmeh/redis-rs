@@ -1,4 +1,4 @@
-use super::{AsyncStream, RedisResult, RedisRuntime, SocketAddr};
+use super::{AsyncStream, RedisResult, RedisRuntime};
 use async_trait::async_trait;
 use std::{
     future::Future,
@@ -6,12 +6,10 @@ use std::{
     pin::Pin,
     task::{self, Poll},
 };
+use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 #[cfg(unix)]
 use tokio::net::UnixStream as UnixStreamTokio;
-use tokio::{
-    io::{AsyncRead, AsyncWrite, ReadBuf},
-    net::TcpStream as TcpStreamTokio,
-};
+use turmoil::net::TcpStream as TcpStreamTokio;
 
 #[cfg(all(feature = "tls-native-tls", not(feature = "tls-rustls")))]
 use native_tls::TlsConnector;
@@ -94,8 +92,8 @@ impl AsyncRead for Tokio {
 
 #[async_trait]
 impl RedisRuntime for Tokio {
-    async fn connect_tcp(socket_addr: SocketAddr) -> RedisResult<Self> {
-        Ok(TcpStreamTokio::connect(&socket_addr)
+    async fn connect_tcp(host: &str, port: u16) -> RedisResult<Self> {
+        Ok(TcpStreamTokio::connect((host, port))
             .await
             .map(Tokio::Tcp)?)
     }

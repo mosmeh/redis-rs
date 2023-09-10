@@ -7,7 +7,6 @@ use ::async_std::net::ToSocketAddrs;
 use ::tokio::io::{AsyncRead, AsyncWrite};
 use async_trait::async_trait;
 use futures_util::Future;
-use std::net::SocketAddr;
 #[cfg(unix)]
 use std::path::Path;
 use std::pin::Pin;
@@ -26,7 +25,7 @@ pub mod tokio;
 #[async_trait]
 pub(crate) trait RedisRuntime: AsyncStream + Send + Sync + Sized + 'static {
     /// Performs a TCP connection
-    async fn connect_tcp(socket_addr: SocketAddr) -> RedisResult<Self>;
+    async fn connect_tcp(host: &str, port: u16) -> RedisResult<Self>;
 
     // Performs a TCP TLS connection
     #[cfg(any(feature = "tls-native-tls", feature = "tls-rustls"))]

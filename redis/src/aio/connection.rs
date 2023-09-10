@@ -11,14 +11,11 @@ use crate::{from_redis_value, ToRedisArgs};
 #[cfg(all(not(feature = "tokio-comp"), feature = "async-std-comp"))]
 use ::async_std::net::ToSocketAddrs;
 use ::tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt};
-#[cfg(feature = "tokio-comp")]
-use ::tokio::net::lookup_host;
 use combine::{parser::combinator::AnySendSyncPartialState, stream::PointerOffset};
 use futures_util::{
     future::FutureExt,
     stream::{Stream, StreamExt},
 };
-use std::net::SocketAddr;
 use std::pin::Pin;
 #[cfg(any(feature = "tokio-comp", feature = "async-std-comp"))]
 use tokio_util::codec::Decoder;
@@ -361,28 +358,11 @@ where
     }
 }
 
-async fn get_socket_addrs(host: &str, port: u16) -> RedisResult<SocketAddr> {
-    #[cfg(feature = "tokio-comp")]
-    let mut socket_addrs = lookup_host((host, port)).await?;
-    #[cfg(all(not(feature = "tokio-comp"), feature = "async-std-comp"))]
-    let mut socket_addrs = (host, port).to_socket_addrs().await?;
-    match socket_addrs.next() {
-        Some(socket_addr) => Ok(socket_addr),
-        None => Err(RedisError::from((
-            ErrorKind::InvalidClientConfig,
-            "No address found for host",
-        ))),
-    }
-}
-
 pub(crate) async fn connect_simple<T: RedisRuntime>(
     connection_info: &ConnectionInfo,
 ) -> RedisResult<T> {
     Ok(match connection_info.addr {
-        ConnectionAddr::Tcp(ref host, port) => {
-            let socket_addr = get_socket_addrs(host, port).await?;
-            <T>::connect_tcp(socket_addr).await?
-        }
+        ConnectionAddr::Tcp(ref host, port) => <T>::connect_tcp(host, port).await?,
 
         #[cfg(any(feature = "tls-native-tls", feature = "tls-rustls"))]
         ConnectionAddr::TcpTls {
